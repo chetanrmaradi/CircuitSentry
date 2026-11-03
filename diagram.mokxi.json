@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "name": "Imported from Wokwi",
+  "parts": [
+    {
+      "id": "esp",
+      "type": "esp32",
+      "props": {
+        "wifiSsid": "Wokwi-GUEST",
+        "wifiPassword": ""
+      },
+      "x": 80,
+      "y": 80,
+      "rot": 0
+    },
+    {
+      "id": "potA",
+      "type": "potentiometer",
+      "props": {},
+      "x": 920,
+      "y": 460,
+      "rot": 0
+    },
+    {
+      "id": "potB",
+      "type": "potentiometer",
+      "props": {},
+      "x": 1220,
+      "y": 460,
+      "rot": 0
+    },
+    {
+      "id": "potC",
+      "type": "potentiometer",
+      "props": {},
+      "x": 1540,
+      "y": 460,
+      "rot": 0
+    },
+    {
+      "id": "redLED",
+      "type": "led",
+      "props": {
+        "color": "red"
+      },
+      "x": 1340,
+      "y": 160,
+      "rot": 0
+    },
+    {
+      "id": "greenLED",
+      "type": "led",
+      "props": {
+        "color": "green"
+      },
+      "x": 1640,
+      "y": 160,
+      "rot": 0
+    },
+    {
+      "id": "redR",
+      "type": "resistor",
+      "props": {
+        "value": 220
+      },
+      "x": 1340,
+      "y": 280,
+      "rot": 0
+    },
+    {
+      "id": "greenR",
+      "type": "resistor",
+      "props": {
+        "value": 220
+      },
+      "x": 1640,
+      "y": 280,
+      "rot": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "from": "esp:3V3",
+      "to": "potA:3",
+      "color": "#e14b4b"
+    },
+    {
+      "id": "w2",
+      "from": "esp:GND",
+      "to": "potA:1",
+      "color": "#7a8290"
+    },
+    {
+      "id": "w3",
+      "from": "esp:D34",
+      "to": "potA:2",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "w4",
+      "from": "esp:3V3",
+      "to": "potB:3",
+      "color": "#e14b4b"
+    },
+    {
+      "id": "w5",
+      "from": "esp:GND",
+      "to": "potB:1",
+      "color": "#7a8290"
+    },
+    {
+      "id": "w6",
+      "from": "esp:D35",
+      "to": "potB:2",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "w7",
+      "from": "esp:3V3",
+      "to": "potC:3",
+      "color": "#e14b4b"
+    },
+    {
+      "id": "w8",
+      "from": "esp:GND",
+      "to": "potC:1",
+      "color": "#7a8290"
+    },
+    {
+      "id": "w9",
+      "from": "esp:D32",
+      "to": "potC:2",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "w10",
+      "from": "esp:D26",
+      "to": "redR:1",
+      "color": "#e8a33d"
+    },
+    {
+      "id": "w11",
+      "from": "redR:2",
+      "to": "redLED:A",
+      "color": "#e8a33d"
+    },
+    {
+      "id": "w12",
+      "from": "redLED:C",
+      "to": "esp:GND",
+      "color": "#7a8290"
+    },
+    {
+      "id": "w13",
+      "from": "esp:D25",
+      "to": "greenR:1",
+      "color": "#1f9d55"
+    },
+    {
+      "id": "w14",
+      "from": "greenR:2",
+      "to": "greenLED:A",
+      "color": "#1f9d55"
+    },
+    {
+      "id": "w15",
+      "from": "greenLED:C",
+      "to": "esp:GND",
+      "color": "#7a8290"
+    }
+  ],
+  "projects": {
+    "esp": {
+      "files": {
+        "sketch.ino": "\n#include <Arduino.h>\n#include <WiFi.h>\n#include <HTTPClient.h>\n\n// ---------- Hardware pins ----------\nconst int ZONE_A_PIN = 34;\nconst int ZONE_B_PIN = 35;\nconst int ZONE_C_PIN = 32;\n\nconst int RED_LED_PIN = 26;\nconst int GREEN_LED_PIN = 25;\n\n// ---------- Wi-Fi ----------\nconst char* WIFI_SSID = \"Wokwi-GUEST\";\nconst char* WIFI_PASSWORD = \"\";\n\n// Your ngrok HTTPS backend URL\nconst char* SERVER_URL =\n  \"https://economy-sandbag-doorframe.ngrok-free.dev/api/data\";\n\n// ---------- Detection settings ----------\nconst int SAMPLE_COUNT = 10;\nconst int CALIBRATION_COUNT = 50;\n\nconst float FAULT_THRESHOLD = 0.30;\n\n// Send one reading every 15 seconds during this short demo.\n// Mokxi Free has a limited daily request allowance.\nconst unsigned long SEND_INTERVAL = 15000;\n\nfloat baselineA = 0;\nfloat baselineB = 0;\nfloat baselineC = 0;\n\nunsigned long lastSendTime = 0;\n\nfloat readVoltage(int pin) {\n  long total = 0;\n\n  for (int i = 0; i < SAMPLE_COUNT; i++) {\n    total += analogRead(pin);\n    delay(5);\n  }\n\n  float average = total / (float)SAMPLE_COUNT;\n  return average * 3.3 / 4095.0;\n}\n\nfloat calibrateZone(int pin) {\n  float total = 0;\n\n  for (int i = 0; i < CALIBRATION_COUNT; i++) {\n    total += readVoltage(pin);\n    delay(10);\n  }\n\n  return total / CALIBRATION_COUNT;\n}\n\nvoid calibrateSensors() {\n  Serial.println(\"\\nCalibrating sensors...\");\n  Serial.println(\"Keep all three zones in their normal positions.\");\n\n  baselineA = calibrateZone(ZONE_A_PIN);\n  baselineB = calibrateZone(ZONE_B_PIN);\n  baselineC = calibrateZone(ZONE_C_PIN);\n\n  Serial.println(\"Calibration complete.\");\n  Serial.printf(\"Baseline A: %.2f V\\n\", baselineA);\n  Serial.printf(\"Baseline B: %.2f V\\n\", baselineB);\n  Serial.printf(\"Baseline C: %.2f V\\n\", baselineC);\n}\n\nvoid connectWiFi() {\n  Serial.print(\"\\nConnecting to Mokxi Wi-Fi\");\n\n  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);\n\n  unsigned long start = millis();\n\n  while (WiFi.status() != WL_CONNECTED &&\n         millis() - start < 20000) {\n    delay(500);\n    Serial.print(\".\");\n  }\n\n  if (WiFi.status() == WL_CONNECTED) {\n    Serial.println(\"\\nWi-Fi connected.\");\n    Serial.println(WiFi.localIP());\n  } else {\n    Serial.println(\"\\nWi-Fi connection failed.\");\n  }\n}\n\nvoid sendToBackend(float a, float b, float c,\n                   bool faultA, bool faultB, bool faultC) {\n\n  if (WiFi.status() != WL_CONNECTED) {\n    Serial.println(\"Wi-Fi disconnected. Skipping upload.\");\n    return;\n  }\n\n  HTTPClient http;\n\n  if (!http.begin(SERVER_URL)) {\n    Serial.println(\"Could not initialize HTTPS connection.\");\n    return;\n  }\n\n  http.addHeader(\"Content-Type\", \"application/json\");\n\n  String payload = \"{\";\n  payload += \"\\\"deviceId\\\":\\\"CircuitSentry-Mokxi\\\",\";\n  payload += \"\\\"zones\\\":{\";\n  payload += \"\\\"A\\\":\" + String(a, 3) + \",\";\n  payload += \"\\\"B\\\":\" + String(b, 3) + \",\";\n  payload += \"\\\"C\\\":\" + String(c, 3);\n  payload += \"}\";\n  payload += \"}\";\n\n  Serial.println(\"\\nSending readings to backend:\");\n  Serial.println(payload);\n\n  int responseCode = http.POST(payload);\n\n  Serial.print(\"Backend HTTP response: \");\n  Serial.println(responseCode);\n\n  if (responseCode > 0) {\n    Serial.println(http.getString());\n  } else {\n    Serial.println(http.errorToString(responseCode));\n  }\n\n  http.end();\n}\n\nvoid setup() {\n  Serial.begin(115200);\n\n  pinMode(RED_LED_PIN, OUTPUT);\n  pinMode(GREEN_LED_PIN, OUTPUT);\n\n  analogReadResolution(12);\n\n  digitalWrite(RED_LED_PIN, LOW);\n  digitalWrite(GREEN_LED_PIN, HIGH);\n\n  connectWiFi();\n\n  // Calibrate with all zones in their normal positions.\n  calibrateSensors();\n\n  lastSendTime = millis() - SEND_INTERVAL;\n}\n\nvoid loop() {\n  float voltageA = readVoltage(ZONE_A_PIN);\n  float voltageB = readVoltage(ZONE_B_PIN);\n  float voltageC = readVoltage(ZONE_C_PIN);\n\n  bool faultA = abs(voltageA - baselineA) > FAULT_THRESHOLD;\n  bool faultB = abs(voltageB - baselineB) > FAULT_THRESHOLD;\n  bool faultC = abs(voltageC - baselineC) > FAULT_THRESHOLD;\n\n  bool anyFault = faultA || faultB || faultC;\n\n  digitalWrite(RED_LED_PIN, anyFault ? HIGH : LOW);\n  digitalWrite(GREEN_LED_PIN, anyFault ? LOW : HIGH);\n\n  Serial.println(\"\\n------ CircuitSentry ------\");\n\n  Serial.printf(\"Zone A: %.2f V | Fault: %s\\n\",\n                voltageA, faultA ? \"YES\" : \"NO\");\n\n  Serial.printf(\"Zone B: %.2f V | Fault: %s\\n\",\n                voltageB, faultB ? \"YES\" : \"NO\");\n\n  Serial.printf(\"Zone C: %.2f V | Fault: %s\\n\",\n                voltageC, faultC ? \"YES\" : \"NO\");\n\n  if (anyFault) {\n    Serial.println(\"STATUS: FAULT DETECTED\");\n  } else {\n    Serial.println(\"STATUS: NORMAL\");\n  }\n\n  if (millis() - lastSendTime >= SEND_INTERVAL) {\n    sendToBackend(\n      voltageA, voltageB, voltageC,\n      faultA, faultB, faultC\n    );\n\n    lastSendTime = millis();\n  }\n\n  delay(1000);\n}\n"
+      },
+      "main": "sketch.ino"
+    }
+  }
+}
