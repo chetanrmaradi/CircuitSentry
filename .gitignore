@@ -5,3 +5,7 @@ node_modules/
 dist/
 build/
 .DS_Store
+
+# Local persistent prototype data (may contain device readings)
+backend/data/events.json
+backend/data/events.json.tmp
