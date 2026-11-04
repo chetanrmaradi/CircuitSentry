@@ -70,14 +70,13 @@ function validateReading(body) {
     const value = zones[zone];
 
     if (
-      typeof value !== "number" ||
-      !Number.isFinite(value) ||
-      value < 0 ||
-      value > 3.3
-    ) {
-      return `Zone ${zone} must be a finite voltage from 0 to 3.3 V.`;
-    }
-  }
+  typeof value !== "number" ||
+  !Number.isFinite(value) ||
+  value < 0 ||
+  value > 3.3
+) {
+  return "Zone " + zone + " must be a finite voltage from 0 to 3.3 V.";
+}
 
   return null;
 }
