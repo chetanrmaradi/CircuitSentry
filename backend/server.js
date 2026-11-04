@@ -8,6 +8,7 @@ const MAX_HISTORY = 200;
 const VALID_ZONES = ["A", "B", "C"];
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "events.json");
+const FRONTEND_DIST = path.resolve(__dirname, "../frontend/dist");
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "10kb", strict: true }));
@@ -63,10 +64,6 @@ function validateReading(body) {
   return null;
 }
 
-app.get("/", (_req, res) => {
-  res.json({ project: "CircuitSentry", mode: "prototype", message: "Backend API is running" });
-});
-
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", storage: "json-file", records: readingsHistory.length });
 });
@@ -102,7 +99,7 @@ app.get("/api/events", (_req, res) => {
   res.json({ count: readingsHistory.length, events: readingsHistory });
 });
 
-// Consistent JSON errors, including malformed JSON and oversized request bodies.
+// Serve the production React build from the same origin as the API.\napp.use(express.static(FRONTEND_DIST));\n\napp.get("/", (_req, res, next) => {\n  const indexFile = path.join(FRONTEND_DIST, "index.html");\n  if (fs.existsSync(indexFile)) return res.sendFile(indexFile);\n  return res.json({ project: "CircuitSentry", mode: "prototype", message: "Backend API is running" });\n});\n\n// Consistent JSON errors, including malformed JSON and oversized request bodies.
 app.use((error, _req, res, _next) => {
   console.error("API error:", error.message);
   if (error.type === "entity.parse.failed") {
