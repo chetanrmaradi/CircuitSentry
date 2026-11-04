@@ -102,6 +102,28 @@ curl.exe -X POST http://127.0.0.1:3000/api/data -H "Content-Type: application/js
 
 Refresh `http://127.0.0.1:3000/api/events` and the dashboard. Zone B should show the low-voltage demo reading.
 
+## Deploy a public dashboard (free)
+
+This repository includes a Render Blueprint in `render.yaml`. It builds the React frontend and serves it from the Express backend, so the public dashboard and `/api` endpoints share one origin. No laptop Command Prompt, local Vite server, or ngrok tunnel is needed after deployment.
+
+1. Push/merge the deployment branch to the GitHub branch you want to deploy (recommended: `main`).
+2. Sign in to [Render](https://render.com/) and connect the GitHub account that owns this repository.
+3. In Render, choose **New → Blueprint**, select `chetanrmaradi/CircuitSentry`, and select the branch containing `render.yaml`.
+4. Review the service and select the **Free** plan if prompted, then create/apply the Blueprint.
+5. Wait for the build and deploy to finish. Open the generated `https://<service-name>.onrender.com` URL.
+6. Verify `/api/health` returns `status: ok` and open the dashboard root URL.
+
+Render can automatically redeploy from the configured Git branch when new commits are pushed. Do not add a tunnel URL to the deployed frontend: it calls the same-origin `/api` endpoints.
+
+### Free-hosting limitations
+
+- Render Free web services spin down after 15 minutes without inbound traffic; the first request after sleep can take about a minute to wake the service.
+- The free service filesystem is ephemeral. The JSON-file event store in this project is suitable for a demo but **not durable in hosted free mode**; records may disappear after sleep, restart or redeploy. Keep local test data backed up separately.
+- Free service availability, monthly usage limits and build minutes are subject to Render's current plan terms. This is a demo/hobby deployment, not production hosting.
+- Mokxi Real Internet still has its own request quota. Hosting the API publicly does not remove the simulator's quota.
+
+See [Render Free limitations](https://render.com/docs/free) before the event.
+
 ## Mokxi simulator connection
 
 Follow [the Mokxi simulation guide](docs/mokxi-simulation.md). Use the Wi-Fi SSID/password shown in the actual simulator's ESP32 board properties; do not assume Wokwi defaults are valid in every Mokxi project. Keep the HTTPS tunnel and backend running while testing.
