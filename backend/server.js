@@ -1,3 +1,4 @@
+```js
 const express = require("express");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -18,7 +19,9 @@ function loadHistory() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     if (!fs.existsSync(DATA_FILE)) return [];
     const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-    if (!Array.isArray(parsed)) throw new Error("Event store must contain an array");
+    if (!Array.isArray(parsed)) {
+      throw new Error("Event store must contain an array");
+    }
     return parsed.slice(-MAX_HISTORY);
   } catch (error) {
     console.error("Could not load event store:", error.message);
@@ -41,7 +44,12 @@ function validateReading(body) {
   }
 
   const { deviceId, zones } = body;
-  if (typeof deviceId !== "string" || deviceId.trim().length === 0 || deviceId.trim().length > 64) {
+
+  if (
+    typeof deviceId !== "string" ||
+    deviceId.trim().length === 0 ||
+    deviceId.trim().length > 64
+  ) {
     return "deviceId must be a non-empty string of at most 64 characters.";
   }
 
@@ -50,13 +58,23 @@ function validateReading(body) {
   }
 
   const keys = Object.keys(zones);
-  if (keys.length !== 3 || !VALID_ZONES.every((zone) => Object.hasOwn(zones, zone))) {
+
+  if (
+    keys.length !== 3 ||
+    !VALID_ZONES.every((zone) => Object.hasOwn(zones, zone))
+  ) {
     return "zones must contain exactly A, B and C.";
   }
 
   for (const zone of VALID_ZONES) {
     const value = zones[zone];
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 3.3) {
+
+    if (
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > 3.3
+    ) {
       return `Zone ${zone} must be a finite voltage from 0 to 3.3 V.`;
     }
   }
@@ -65,11 +83,16 @@ function validateReading(body) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", storage: "json-file", records: readingsHistory.length });
+  res.json({
+    status: "ok",
+    storage: "json-file",
+    records: readingsHistory.length
+  });
 });
 
 app.post("/api/data", (req, res, next) => {
   const validationError = validateReading(req.body);
+
   if (validationError) {
     return res.status(400).json({ error: validationError });
   }
@@ -89,29 +112,61 @@ app.post("/api/data", (req, res, next) => {
   try {
     persistHistory(nextHistory);
     readingsHistory = nextHistory;
-    return res.status(201).json({ message: "Reading accepted", record });
+
+    return res.status(201).json({
+      message: "Reading accepted",
+      record
+    });
   } catch (error) {
     return next(error);
   }
 });
 
 app.get("/api/events", (_req, res) => {
-  res.json({ count: readingsHistory.length, events: readingsHistory });
+  res.json({
+    count: readingsHistory.length,
+    events: readingsHistory
+  });
 });
 
-// Serve the production React build from the same origin as the API.\napp.use(express.static(FRONTEND_DIST));\n\napp.get("/", (_req, res, next) => {\n  const indexFile = path.join(FRONTEND_DIST, "index.html");\n  if (fs.existsSync(indexFile)) return res.sendFile(indexFile);\n  return res.json({ project: "CircuitSentry", mode: "prototype", message: "Backend API is running" });\n});\n\n// Consistent JSON errors, including malformed JSON and oversized request bodies.
+// Serve the production React build.
+app.use(express.static(FRONTEND_DIST));
+
+app.get("/", (_req, res, next) => {
+  const indexFile = path.join(FRONTEND_DIST, "index.html");
+
+  if (fs.existsSync(indexFile)) {
+    return res.sendFile(indexFile);
+  }
+
+  return res.status(503).json({
+    error: "Frontend build not found. Check the Render build logs."
+  });
+});
+
+// Handle malformed JSON, oversized requests and other errors.
 app.use((error, _req, res, _next) => {
   console.error("API error:", error.message);
+
   if (error.type === "entity.parse.failed") {
-    return res.status(400).json({ error: "Malformed JSON request body." });
+    return res.status(400).json({
+      error: "Malformed JSON request body."
+    });
   }
+
   if (error.type === "entity.too.large") {
-    return res.status(413).json({ error: "Request body exceeds the 10 KB limit." });
+    return res.status(413).json({
+      error: "Request body exceeds the 10 KB limit."
+    });
   }
-  return res.status(500).json({ error: "Internal server error." });
+
+  return res.status(500).json({
+    error: "Internal server error."
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`CircuitSentry API listening on port ${PORT}`);
   console.log(`Persistent event store: ${DATA_FILE}`);
 });
+```
